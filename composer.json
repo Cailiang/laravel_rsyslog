@@ -1,0 +1,25 @@
+{
+    "name": "format_rsyslog/laravel_rsyslog",
+    "authors": [
+        {
+            "name": "ylb",
+            "email": "715417367@qq.com"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Output\\Standardlog\\": "src/Output/Standardlog/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Output\\Standardlog\\StandardlogServiceProvider"
+            ],
+            "aliases": {
+                "Standardlog": "Output\\Standardlog\\Facades\\Standardlog"
+            }
+        }
+    }
+}
