@@ -2,13 +2,14 @@
 
 namespace Output\Standardlog;
 
-use Illuminate\Config\Repository;
 use Illuminate\Support\Facades\Log;
 
 class Standardlog
 {
 
-    protected $channel;
+    protected $tag;
+
+    protected $alarm_level = ['error' => 1, 'critical' => 2, 'alert' => 3];
 
     /**
      * Packagetest constructor
@@ -19,63 +20,87 @@ class Standardlog
     }
 
     /**
-     * @param $content
      * @param $message
+     * @param $content
+     * @param string $tag
      * @param int $label
-     * @param string $channel
      */
-    public function debug($content, $message, $label = 1, $channel = 'papertrail')
+    public function debug($message, $content, $tag = '', $label = 1)
     {
-        $this->channel = $channel;
+        $this->tag = $tag ? $tag : env('APP_NAME');
         $this->getMessage('debug', $label, $message, $content);
     }
 
     /**
-     * @param $content
      * @param $message
+     * @param $content
+     * @param string $tag
      * @param int $label
-     * @param string $channel
      */
-    public function info($content, $message, $label = 1, $channel = 'papertrail')
+    public function info($message, $content, $tag = '', $label = 1)
     {
-        $this->channel = $channel;
+        $this->tag = $tag ? $tag : env('APP_NAME');
         $this->getMessage('info', $label, $message, $content);
     }
 
     /**
-     * @param $content
      * @param $message
+     * @param $content
+     * @param string $tag
      * @param int $label
-     * @param string $channel
      */
-    public function notice($content, $message, $label = 1, $channel = 'papertrail')
+    public function notice($message, $content, $tag = '', $label = 1)
     {
-        $this->channel = $channel;
+        $this->tag = $tag ? $tag : env('APP_NAME');
         $this->getMessage('notice', $label, $message, $content);
     }
 
     /**
-     * @param $content
      * @param $message
+     * @param $content
+     * @param string $tag
      * @param int $label
-     * @param string $channel
      */
-    public function warning($content, $message, $label = 1, $channel = 'papertrail')
+    public function warning($message, $content, $tag = '', $label = 1)
     {
-        $this->channel = $channel;
+        $this->tag = $tag ? $tag : env('APP_NAME');
         $this->getMessage('warning', $label, $message, $content);
     }
 
     /**
-     * @param $content
      * @param $message
+     * @param $content
+     * @param string $tag
      * @param int $label
-     * @param string $channel
      */
-    public function error($content, $message, $label = 1, $channel = 'papertrail')
+    public function error($message, $content, $tag = '', $label = 1)
     {
-        $this->channel = $channel;
+        $this->tag = $tag ? $tag : env('APP_NAME');
         $this->getMessage('error', $label, $message, $content);
+    }
+
+    /**
+     * @param $message
+     * @param $content
+     * @param string $tag
+     * @param int $label
+     */
+    public function critical($message, $content, $tag = '', $label = 1)
+    {
+        $this->tag = $tag ? $tag : env('APP_NAME');
+        $this->getMessage('critical', $label, $message, $content);
+    }
+
+    /**
+     * @param $message
+     * @param $content
+     * @param string $tag
+     * @param int $label
+     */
+    public function alert($message, $content, $tag = '', $label = 1)
+    {
+        $this->tag = $tag ? $tag : env('APP_NAME');
+        $this->getMessage('alert', $label, $message, $content);
     }
 
     /**
@@ -87,12 +112,9 @@ class Standardlog
      */
     protected function getMessage($level, $label, $message, $content)
     {
-
-        $host = $_SERVER['HTTP_HOST'];
-
-        $addr = $_SERVER['SERVER_ADDR'];
-
-        $app_name = env('APP_NAME');
+        if (in_array($level, array_keys($this->alarm_level))) {
+            $this->sendAlarm($this->alarm_level[$level], $message, $content);
+        }
 
         switch ($label) {
             case 1:
@@ -115,19 +137,47 @@ class Standardlog
             'content' => $content];
 
 
-        $data = $host . ' ' . $addr . ' ' . $app_name . ' ' . json_encode($data, JSON_UNESCAPED_UNICODE);
+        $data = time() . ' ' . json_encode($data, JSON_UNESCAPED_UNICODE);
 
-        $this->writeLog($data);
+        $this->writeLog($data, $level);
 
     }
 
     /**
      * @param $data
      */
-    protected function writeLog($data)
+    protected function writeLog($data, $func)
     {
-        Log::channel($this->channel)->info($data);
+        config(['logging.channels.papertrail.handler_with.ident' => $this->tag]);
+        Log::channel('papertrail')->{$func}($data);
     }
+
+    /**
+     * @param $level
+     * @param $message
+     * @param $content
+     * @return mixed
+     */
+    protected function sendAlarm($level, $message, $content)
+    {
+        $postUrl = env('ALARM_URL');
+        $curlPost = ['business' => env('APP_NAME'),
+            'function' => $content,
+            'message' => $message,
+            'env' => env('APP_ENV'),
+            'alert_level' => $level];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $postUrl);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $curlPost);
+        $data = curl_exec($ch);
+        curl_close($ch);
+    }
+
+
 }
 
 
