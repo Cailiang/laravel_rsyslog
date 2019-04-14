@@ -11,6 +11,19 @@ class Standardlog
 
     protected $alarm_level = ['error' => 1, 'critical' => 2, 'alert' => 3];
 
+    protected $sys_log_tag = [
+        'debug' => 'LOG_DEBUG',
+        'info' => 'LOG_INFO',
+        'notice' => 'LOG_NOTICE',
+        'warning' => 'LOG_WARNING',
+        'error' => 'LOG_ERR',
+        'critical' => 'LOG_CRIT',
+        'alert' => 'LOG_ALERT',
+
+    ];
+
+    protected $now_sys_log_tag;
+
     /**
      * Packagetest constructor
      */
@@ -112,6 +125,8 @@ class Standardlog
      */
     protected function getMessage($level, $label, $message, $content)
     {
+        $this->now_sys_log_tag = $this->sys_log_tag[$level];
+
         if (in_array($level, array_keys($this->alarm_level))) {
             $this->sendAlarm($this->alarm_level[$level], $message, $content);
         }
@@ -145,11 +160,38 @@ class Standardlog
 
     /**
      * @param $data
+     * @param $func
      */
     protected function writeLog($data, $func)
     {
+        if (env('APP_ENV') && env('APP_ENV') == 'local') {
+            $this->writeLocalLog($data, $func);
+        } else {
+            $this->writeServerLog($data);
+
+        }
+    }
+
+    /**
+     * 测试时通过 udp 写日志
+     * @param $data
+     * @param $func
+     */
+    protected function writeLocalLog($data, $func)
+    {
         config(['logging.channels.papertrail.handler_with.ident' => $this->tag]);
         Log::channel('papertrail')->{$func}($data);
+    }
+
+    /**
+     * 在服务器上通过配置的 rsyslog 客户端写日志
+     * @param $data
+     */
+    protected function writeServerLog($data)
+    {
+        openlog($this->tag, LOG_PID, LOG_USER);
+        syslog($this->now_sys_log_tag, $data);
+        closelog();
     }
 
     /**
