@@ -12,13 +12,13 @@ class Standardlog
     protected $alarm_level = ['error' => 1, 'critical' => 2, 'alert' => 3];
 
     protected $sys_log_tag = [
-        'debug' => 'LOG_DEBUG',
-        'info' => 'LOG_INFO',
-        'notice' => 'LOG_NOTICE',
-        'warning' => 'LOG_WARNING',
-        'error' => 'LOG_ERR',
-        'critical' => 'LOG_CRIT',
-        'alert' => 'LOG_ALERT',
+        'debug' => LOG_DEBUG,
+        'info' => LOG_INFO,
+        'notice' => LOG_NOTICE,
+        'warning' => LOG_WARNING,
+        'error' => LOG_ERR,
+        'critical' => LOG_CRIT,
+        'alert' => LOG_ALERT,
 
     ];
 
